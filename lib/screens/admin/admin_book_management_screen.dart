@@ -21,7 +21,6 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
   List<String> _publishers = [];
   List<int> _years = [];
 
-  String _searchQuery = '';
   bool _isLoading = false;
   int _currentPage = 1;
   int _totalPages = 1;
@@ -130,9 +129,7 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
       setState(() {
         _categories = categories;
       });
-    } catch (e) {
-
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadAuthors() async {
@@ -141,9 +138,7 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
       if (mounted) {
         setState(() => _authors = authors);
       }
-    } catch (e) {
-
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadPublishers() async {
@@ -152,9 +147,7 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
       if (mounted) {
         setState(() => _publishers = publishers);
       }
-    } catch (e) {
-
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadYears() async {
@@ -163,9 +156,7 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
       if (mounted) {
         setState(() => _years = years);
       }
-    } catch (e) {
-
-    }
+    } catch (e) {}
   }
 
   void _showAddBookDialog() {
@@ -184,6 +175,8 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
     final yearController = TextEditingController(text: book?.tahun ?? '');
     final stockController =
         TextEditingController(text: book?.stok.toString() ?? '1');
+    final pathController =
+        TextEditingController(text: book?.path ?? ''); // Field baru
     int? selectedCategoryId = book?.category.id;
 
     showDialog(
@@ -236,6 +229,14 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 16),
+                TextField(
+                  controller: pathController,
+                  decoration: const InputDecoration(
+                    labelText: 'Path Gambar (contoh: storage/covers/file.jpg)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
                   value: selectedCategoryId,
                   decoration: const InputDecoration(
@@ -281,6 +282,7 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
                     'tahun': yearController.text,
                     'category_id': selectedCategoryId.toString(),
                     'stok': stockController.text,
+                    'path': pathController.text, // Kirim path gambar
                   };
 
                   bool success;
@@ -972,46 +974,14 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
                         ),
                       )
                     : ListView.builder(
+                        padding: const EdgeInsets.all(8),
                         itemCount: _books.length,
                         itemBuilder: (context, index) {
                           final book = _books[index];
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            child: ListTile(
-                              title: Text(
-                                book.judul,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Pengarang: ${book.pengarang}'),
-                                  Text('Kategori: ${book.category.name}'),
-                                  Text('Stok: ${book.stok}'),
-                                  Text('Penerbit: ${book.penerbit}'),
-                                  Text('Tahun: ${book.tahun}'),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit,
-                                        color: Colors.blue),
-                                    onPressed: () => _showEditBookDialog(book),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete,
-                                        color: Colors.red),
-                                    onPressed: () => _deleteBook(book),
-                                  ),
-                                ],
-                              ),
-                              isThreeLine: true,
-                            ),
+                          return _BookListItem(
+                            book: book,
+                            onEdit: () => _showEditBookDialog(book),
+                            onDelete: () => _deleteBook(book),
                           );
                         },
                       ),
@@ -1108,6 +1078,111 @@ class _AdminBookManagementScreenState extends State<AdminBookManagementScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// **BARU:** Widget terpisah untuk menampilkan item buku di sisi admin
+class _BookListItem extends StatelessWidget {
+  final Book book;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _BookListItem({
+    required this.book,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Gambar Sampul
+            SizedBox(
+              width: 80,
+              height: 110,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: book.coverUrl != null && book.coverUrl!.isNotEmpty
+                    ? Image.network(
+                        book.coverUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: Icon(Icons.error, color: Colors.red),
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: Icon(Icons.book, color: Colors.grey),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Detail Buku
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    book.judul,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text('oleh ${book.pengarang}',
+                      style: TextStyle(color: Colors.grey[700])),
+                  const SizedBox(height: 8),
+                  Text('Kategori: ${book.category.name}'),
+                  Text('Stok: ${book.stok}'),
+                  Text('Penerbit: ${book.penerbit} (${book.tahun})'),
+                ],
+              ),
+            ),
+            // Tombol Aksi
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue),
+                  onPressed: onEdit,
+                  tooltip: 'Edit',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: onDelete,
+                  tooltip: 'Hapus',
+                ),
+              ],
+            )
+          ],
+        ),
       ),
     );
   }

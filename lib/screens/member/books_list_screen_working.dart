@@ -279,19 +279,23 @@ class _MemberBooksListScreenState extends State<MemberBooksListScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _books.isEmpty
                     ? _buildEmptyState()
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _books.length + (_isLoadingMore ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index >= _books.length) {
-                            return const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          }
-                          return _buildBookCard(_books[index]);
-                        },
+                    : RefreshIndicator(
+                        onRefresh: () => _loadBooks(reset: true),
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _books.length + (_isLoadingMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index >= _books.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child:
+                                    Center(child: CircularProgressIndicator()),
+                              );
+                            }
+                            return _buildBookCard(_books[index]);
+                          },
+                        ),
                       ),
           ),
         ],
@@ -337,149 +341,133 @@ class _MemberBooksListScreenState extends State<MemberBooksListScreen> {
   Widget _buildBookCard(Book book) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
+      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Book Cover
-            Container(
-              width: 80,
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey.shade200,
-              ),
-              child: book.path != null && book.path!.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        'http://perpus-api.mamorasoft.com/${book.path}',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.book,
-                            size: 40,
-                            color: Colors.grey.shade400,
-                          );
-                        },
-                      ),
-                    )
-                  : Icon(
-                      Icons.book,
-                      size: 40,
-                      color: Colors.grey.shade400,
-                    ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Book Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    book.judul,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Pengarang: ${book.pengarang}',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    'Penerbit: ${book.penerbit}',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    'Tahun: ${book.tahun}',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: book.stok > 0
-                              ? Colors.green.shade100
-                              : Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Stok: ${book.stok}',
-                          style: TextStyle(
-                            color: book.stok > 0
-                                ? Colors.green.shade700
-                                : Colors.red.shade700,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      if (book.stok > 0)
-                        ElevatedButton(
-                          onPressed: () => _showBorrowDialog(book),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade600,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text('Pinjam'),
+        onTap: () {
+          // Navigasi ke detail buku jika ada
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Book Cover
+              SizedBox(
+                width: 80,
+                height: 120,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: book.coverUrl != null && book.coverUrl!.isNotEmpty
+                      ? Image.network(
+                          book.coverUrl!,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2.0),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: Icon(Icons.book_outlined,
+                                    color: Colors.grey),
+                              ),
+                            );
+                          },
                         )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'Tidak Tersedia',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
+                      : Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child:
+                                Icon(Icons.book_outlined, color: Colors.grey),
                           ),
                         ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Book Info
+              Expanded(
+                child: SizedBox(
+                  height: 120,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            book.judul,
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text('oleh ${book.pengarang}',
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 14)),
+                          Text(book.penerbit,
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 13)),
+                          Text('Tahun: ${book.tahun}',
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 13)),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: book.stok > 0
+                                  ? Colors.green.shade100
+                                  : Colors.red.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              book.stok > 0 ? 'Stok: ${book.stok}' : 'Habis',
+                              style: TextStyle(
+                                color: book.stok > 0
+                                    ? Colors.green.shade800
+                                    : Colors.red.shade800,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          if (book.stok > 0)
+                            ElevatedButton(
+                              onPressed: () => _showBorrowDialog(book),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade600,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                              ),
+                              child: const Text('Pinjam'),
+                            )
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -529,9 +517,6 @@ class _MemberBooksListScreenState extends State<MemberBooksListScreen> {
   }
 
   Future<void> _borrowBook(Book book) async {
-    // Debug authentication status
-    final authStatus = await _apiService.getAuthStatus();
-
     // Get current user ID
     int? userId = await _apiService.getUserId();
 
